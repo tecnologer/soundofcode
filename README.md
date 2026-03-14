@@ -19,14 +19,27 @@ Audio is synthesized with additive synthesis (6 harmonics with piano-like inharm
 
 ## Requirements
 
-- Linux with evdev support (`/dev/input/event*`)
+### Linux
+
+- evdev support (`/dev/input/event*`)
 - ALSA (via [oto](https://github.com/ebitengine/oto))
-- LAME (`libmp3lame`) for MP3 export
 - Member of the `input` group to read keyboard devices:
   ```sh
   sudo usermod -aG input $USER
   # log out and back in
   ```
+- LAME (`libmp3lame`) for MP3 export
+
+### macOS
+
+- CoreAudio (built-in)
+- Run in the foreground (daemon mode requires a terminal)
+- LAME for MP3 export:
+  ```sh
+  brew install lame
+  ```
+
+On macOS, keyboard input is read from the terminal in raw mode — just type as you would on Linux.
 
 ## Install
 
@@ -54,10 +67,10 @@ soundofcode -format mp3
 # Choose output path
 soundofcode -output ~/my-song.mid
 
-# Run as a background daemon
+# Run as a background daemon (Linux only)
 soundofcode -daemon
 
-# Control a running daemon
+# Control a running daemon (Linux only)
 soundofcode -ctl pause    # pause recording
 soundofcode -ctl resume   # resume recording
 soundofcode -ctl stop     # save current recording and start fresh
@@ -65,7 +78,7 @@ soundofcode -ctl stop     # save current recording and start fresh
 
 Press `Ctrl+C` or send `SIGTERM` to stop and save.
 
-### Daemon mode
+### Daemon mode (Linux only)
 
 When running with `-daemon`, the process detaches from the terminal. Logs are written to `~/.soundofcode.log`. The PID is stored in `~/.soundofcode.pid` for control commands.
 

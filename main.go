@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/tecnologer/soundofcode/internal/audio"
-	"github.com/tecnologer/soundofcode/internal/evdev"
+	"github.com/tecnologer/soundofcode/internal/keyboard"
 	"github.com/tecnologer/soundofcode/internal/keymap"
 	"github.com/tecnologer/soundofcode/internal/song"
 )
@@ -73,18 +73,7 @@ func run(outputPath, format string) error {
 
 	defer engine.Close()
 
-	keyboards, err := evdev.FindKeyboards()
-	if err != nil {
-		return fmt.Errorf("find keyboards: %w", err)
-	}
-
-	if len(keyboards) == 0 {
-		return fmt.Errorf("no keyboard devices found — add yourself to the 'input' group:\n  sudo usermod -aG input $USER\nthen log out and back in")
-	}
-
-	log.Printf("soundofcode: listening on %d keyboard device(s)", len(keyboards))
-
-	return runLoop(ctx, cancel, engine, keyboards, outputPath, format)
+	return runLoop(ctx, cancel, engine, outputPath, format)
 }
 
 // runLoop runs the main event loop after setup.
@@ -92,12 +81,13 @@ func runLoop(
 	ctx context.Context,
 	cancel context.CancelFunc,
 	engine *audio.Engine,
-	keyboards []string,
 	outputPath, format string,
 ) error {
 	keyCh := make(chan uint16, 64)
-	for _, dev := range keyboards {
-		go evdev.ReadKeys(ctx, dev, keyCh)
+
+	err := keyboard.StartListening(ctx, keyCh)
+	if err != nil {
+		return fmt.Errorf("start listening: %w", err)
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -218,12 +208,20 @@ func control(cmd string) error {
 
 	switch cmd {
 	case "pause", "resume":
-		return fmt.Errorf("signal pause/resume: %w", proc.Signal(syscall.SIGUSR1))
+		err = proc.Signal(syscall.SIGUSR1)
+		if err != nil {
+			return fmt.Errorf("signal pause/resume: %w", err)
+		}
 	case "stop":
-		return fmt.Errorf("signal stop: %w", proc.Signal(syscall.SIGUSR2))
+		err = proc.Signal(syscall.SIGUSR2)
+		if err != nil {
+			return fmt.Errorf("signal stop: %w", err)
+		}
 	default:
 		return fmt.Errorf("unknown control command %q — use pause, resume, or stop", cmd)
 	}
+
+	return nil
 }
 
 func pidFilePath() string {
@@ -236,7 +234,12 @@ func pidFilePath() string {
 }
 
 func writePID() error {
-	return fmt.Errorf("write PID: %w", os.WriteFile(pidFilePath(), []byte(strconv.Itoa(os.Getpid())), 0o644))
+	err := os.WriteFile(pidFilePath(), []byte(strconv.Itoa(os.Getpid())), 0o644)
+	if err != nil {
+		return fmt.Errorf("write PID: %w", err)
+	}
+
+	return nil
 }
 
 func removePID() {
@@ -292,7 +295,12 @@ func daemonize() error {
 
 	fmt.Printf("soundofcode: daemon started (pid %d), logs → %s\n", proc.Pid, logFilePath())
 
-	return fmt.Errorf("release daemon process: %w", proc.Release())
+	err = proc.Release()
+	if err != nil {
+		return fmt.Errorf("release daemon process: %w", err)
+	}
+
+	return nil
 }
 
 func logFilePath() string {
