@@ -39,7 +39,22 @@ Audio is synthesized with additive synthesis (6 harmonics with piano-like inharm
   brew install lame
   ```
 
-On macOS, keyboard input is read from the terminal in raw mode — just type as you would on Linux.
+After installing LAME, tell the Go toolchain where to find its headers and library (required once per machine):
+
+```sh
+go env -w CGO_CFLAGS="-I/opt/homebrew/opt/lame/include"
+go env -w CGO_LDFLAGS="-L/opt/homebrew/opt/lame/lib"
+```
+
+These are saved to your Go environment file (`~/.config/go/env`) and apply to all future builds automatically.
+
+#### Global keyboard capture (optional)
+
+By default, keyboard input is captured from the terminal in raw mode and only works when the terminal has focus. To play notes from any window, grant **Input Monitoring** permission to your terminal app:
+
+> System Settings → Privacy & Security → Input Monitoring → enable your terminal (Terminal.app, iTerm2, etc.)
+
+Once granted, soundofcode will use `CGEventTap` and capture keystrokes system-wide.
 
 ## Install
 
